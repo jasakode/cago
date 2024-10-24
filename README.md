@@ -10,20 +10,36 @@ Thread safe GoLang [Cago](http://www.vldb.org/conf/1994/P439.PDF) cache.
 
 Cache Go, key value store in memory
 
+## Features
 
 
-### Value structure representation
+```sh
+go get github.com/jasakode/cago
+```
 
-- 5 bytes signature / 63 67 65 71 79
-- 8 bytes start date
-- chunk | 
-    Length (4 bytes) | 
-    STX start of text (1 byte) |
-    ETX end of text (1 byte) |
-    Data (variable) | 
-    Create At 8 bytes | 
-    Update At 8 bytes | 
-    GS group sparator (1 byte) |
+```go
+package main
 
+import "github.com/jasakode/cago"
 
+func main() {
+    err := cago.New()
+    if err != nil {
+        panic(err.Error())
+    }
+}
+
+```
+
+Execut set in another file in project
+```go
+package other
+
+import "github.com/jasakode/cago"
+
+func main() {
+    store := cago.Get("test")
+    fmt.Println(store.Text())
+}
+```
 
