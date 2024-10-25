@@ -8,6 +8,7 @@ package cago_test
 import (
 	"bytes"
 	"fmt"
+	"sync"
 	"testing"
 	"time"
 
@@ -40,10 +41,46 @@ type Person struct {
 }
 
 func TestApp(t *testing.T) {
-	t.Cleanup(func() {})
+	var wg sync.WaitGroup
 
-	cago.New()
-	time.Sleep(1 * time.Second)
-	cago.Set("hello", uint64(2327632839))
-	fmt.Println(*cago.Get[uint64]("hello"))
+	// Hapus file database sebelum test dimulai
+
+	t.Cleanup(func() {
+		// os.Remove("db.db")
+	})
+
+	// Inisialisasi cago dengan database baru
+	cago.New(cago.Config{
+		Path: "db.db",
+	})
+
+	// Tambahkan WaitGroup untuk menunggu proses selesai
+	wg.Add(1)
+
+	// Luncurkan goroutine untuk menunggu 3 detik
+	go func() {
+		defer wg.Done()
+		time.Sleep(3 * time.Second)
+	}()
+
+	// Tunggu sampai goroutine selesai
+	wg.Wait()
+
+	// Test untuk key "jhon"
+	rs := cago.Get[string]("jhon")
+	if rs != nil {
+		fmt.Println(*rs)
+	} else {
+		fmt.Println("Data Not Found !!!")
+	}
+
+	// cago.Set("hello", "HALLO KAMU", 5000)
+	// cago.Set("jhon", "HALLO KAMU Jhon", 60000 * 60)
+	// time.Sleep(1 * time.Second)
+	// fmt.Println(cago.Size())
+	// fmt.Println(*cago.Get[string]("hello"))
+	// fmt.Println(*cago.Get[string]("jhon"))
+	// time.Sleep(23 * time.Second)
+	// fmt.Println(cago.Size())
+	// fmt.Println(cago.Get[string]("hello"), cago.Get[string]("jhon"))
 }

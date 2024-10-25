@@ -134,12 +134,20 @@ func (s Store) SetUpdateAt(date uint64) Store {
 }
 
 // Length mengembalikan panjang data yang disimpan dalam store.
-// Fungsi ini membaca nilai panjang dari indeks yang ditentukan
-// (LengthIndex) dan mengembalikannya dalam bentuk uint64.
+// Jika parameter opsional `all` diisi dan bernilai true, maka
+// panjang keseluruhan store akan dikembalikan. Jika tidak,
+// fungsi ini akan membaca nilai panjang dari indeks yang ditentukan
+// (LengthIndex) dan mengembalikannya sebagai uint64.
+//
+// Parameter:
+// - all (opsional): Jika diisi true, mengembalikan panjang seluruh store.
 //
 // Mengembalikan:
-// - uint64: Panjang data yang disimpan dalam store.
-func (s Store) Length() uint64 {
+// - uint64: Panjang data yang disimpan atau panjang keseluruhan store jika all true.
+func (s Store) Length(all ...bool) uint64 {
+	if len(all) > 0 && all[0] {
+		return uint64(len(s))
+	}
 	return binary.BigEndian.Uint64(s[LengthIndex:])
 }
 
