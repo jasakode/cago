@@ -12,7 +12,7 @@ Tiny, in‑memory, thread‑safe key/value cache for Go with TTL support.
 ## Installation
 
 ```sh
-go get github.com/jasakode/cago
+go get github.com/jasakode/cago/v2
 ```
 
 ## Quick Start
@@ -24,7 +24,7 @@ import (
     "fmt"
     "time"
 
-    "github.com/jasakode/cago"
+    "github.com/jasakode/cago/v2"
 )
 
 func main() {

@@ -10,8 +10,6 @@ import (
     "encoding/json"
     "fmt"
     "time"
-
-    "github.com/jasakode/cago/src/lib"
 )
 
 // Store is a compact binary blob that prefixes the payload with metadata:
@@ -24,12 +22,6 @@ import (
 //
 // This format is intended for simple binary serialization of values.
 type Store []byte
-
-// Compare enumerates comparable value types. It is retained here for potential
-// future helpers; not required by the cache engine.
-type Compare interface {
-    uint8 | uint16 | uint32 | uint64 | int8 | int16 | int32 | int64 | float32 | float64 | int | uint | string | any
-}
 
 const (
     CreateAtIndex  = 0
@@ -48,10 +40,16 @@ func NewStore(data []byte, maxAge ...uint64) Store {
     }
 
     s := make(Store, DataStartIndex+len(data))
-    copy(s[CreateAtIndex:UpdateAtIndex], lib.Uint64ToByte(uint64(time.Now().UnixMilli())))
-    copy(s[UpdateAtIndex:MaxAgeIndex], make([]byte, 8))
-    copy(s[MaxAgeIndex:LengthIndex], lib.Uint64ToByte(MaxAge))
-    copy(s[LengthIndex:], lib.Uint64ToByte(uint64(len(data))))
+    // createdAt
+    binary.BigEndian.PutUint64(s[CreateAtIndex:UpdateAtIndex], uint64(time.Now().UnixMilli()))
+    // updatedAt (initially zero)
+    for i := UpdateAtIndex; i < MaxAgeIndex; i++ {
+        s[i] = 0
+    }
+    // maxAge
+    binary.BigEndian.PutUint64(s[MaxAgeIndex:LengthIndex], MaxAge)
+    // payload length
+    binary.BigEndian.PutUint64(s[LengthIndex:], uint64(len(data)))
     copy(s[DataStartIndex:], data)
     return s
 }
@@ -99,7 +97,7 @@ func (s Store) MaxAge() uint64 {
 
 // SetMaxAge updates the stored maxAge and returns the mutated store.
 func (s Store) SetMaxAge(maxAge uint64) Store {
-    copy(s[MaxAgeIndex:LengthIndex], lib.Uint64ToByte(maxAge))
+    binary.BigEndian.PutUint64(s[MaxAgeIndex:LengthIndex], maxAge)
     return s
 }
 
@@ -128,4 +126,3 @@ func (s Store) Bytes() []byte { return s[DataStartIndex:] }
 func (s Store) JSON(dest interface{}) error {
     return json.Unmarshal(s[DataStartIndex:], dest)
 }
-

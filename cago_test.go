@@ -6,10 +6,10 @@
 package cago_test
 
 import (
-	"testing"
-	"time"
+    "testing"
+    "time"
 
-	"github.com/jasakode/cago"
+    "github.com/jasakode/cago/v2"
 )
 
 func setup()   { _ = cago.New(cago.Config{CleanInterval: 20 * time.Millisecond}) }

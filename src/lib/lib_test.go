@@ -8,7 +8,7 @@ package lib_test
 import (
     "testing"
 
-    "github.com/jasakode/cago/src/lib"
+    "github.com/jasakode/cago/v2/src/lib"
 )
 
 // equal membandingkan dua slice byte untuk kesetaraan.
