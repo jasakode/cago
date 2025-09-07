@@ -1,20 +1,13 @@
-# Cago 
+# Cago
 
-Cache Go, key value store in memory
+Tiny, in‑memory, thread‑safe key/value cache for Go with TTL support.
 
-## Table Of Contents
+## Features
 
-[**Type**](#type)
-- [Config](#config)
-
-[**Function**](#function)
-- [New(config ...cago.Config)](#how-to-use)
-- [Get(key string)](#get)
-- [Exist(key string)](#exist)
-- [Set(key string, value Compare, maxAge uint64)](#set)
-- [Put(key string, value Compare, maxAge uint64)](#put)
-- [Remove(key string)](#remove)
-- [Clear()](#clear)
+- Simple API with generics for typed Get/Set
+- Per‑key TTL with background cleanup (janitor)
+- Lazy expiration on read for precision
+- Thread‑safe (RWMutex)
 
 ## Installation
 
@@ -22,135 +15,99 @@ Cache Go, key value store in memory
 go get github.com/jasakode/cago
 ```
 
-## How to use
+## Quick Start
 
 ```go
 package main
 
-import "github.com/jasakode/cago"
+import (
+    "fmt"
+    "time"
+
+    "github.com/jasakode/cago"
+)
 
 func main() {
-    err := cago.New(cago.Config{
-        Path: "database.db",
-    })
-    if err != nil {
-        panic(err.Error())
+    // Start the cache with a 1s cleanup interval (default)
+    _ = cago.New()
+    defer cago.Close()
+
+    // Set a value that expires in 5 seconds
+    _ = cago.Set("name", "Cago", 5*time.Second)
+
+    // Typed read
+    if v, ok := cago.Get[string]("name"); ok {
+        fmt.Println(v)
     }
 }
-
 ```
-### Config
+
+## API
 
 ```go
 type Config struct {
-	Path                string
-	MAX_MEM             uint
-	MIN_MEM_ALLOCATION  uint64
-	EvictOldestOnMaxMem bool
-	TimeoutCheck        uint64
-}
-```
-
-- **Path** string alamat file untuk menyimpan data
-- **MAX_MEM** ukuran maksimal memory yang akan di gunakan
-- **MIN_MEM_ALLOCATION** Minimal memory yang akan di bebaskan saat program pertama kali di jalankan
-- **EvictOldestOnMaxMem** jika : true, maka cache yang paling pertama di tambahkan akan di hapus jika terjadi kelebihan memory
-- **TimeoutCheck** waktu pengecekan data, default 10 detik, maka setiap 10 detik akan melalkukan pengecekan dan penghapusan cahce yang telah kadaluarsa
-
-## Function
-
-### Set
-```go
-package main
-
-import "github.com/jasakode/cago"
-
-func main() {
-    err := cago.Set("name", "Jhon Doe", 10000) // set cache with key name and value jhone in 10 second
-    if err != nil {
-        panic(err) // if value exist error
-    }
-    cago.Set("age", 24, 10000) // set cache with key age and value uint 24 in 10 second
-    if err != nil {
-        panic(err) // if value exist error
-    }
-    type Person struct {
-        Name string `json:"name"`
-        Age uint `json:"age"`
-    }
-    cago.Set("person", Person{ Name: "Jhon Doe", Age: 24 }, 10000) // set cache with key person and value struct Person 24 in 10 second
-    if err != nil {
-        panic(err) // if value exist error
-    }
+    CleanInterval time.Duration // how often to run cleanup; default 1s
+    Timezone      cago.Timezone // reserved, not used by the engine
 }
 
+func New(cfg ...cago.Config) error
+func Close()
+
+func Set[T any](key string, value T, ttl time.Duration) error // error if key exists and not expired
+func Put[T any](key string, value T, ttl time.Duration)       // upsert
+func Get[T any](key string) (T, bool)                         // typed read
+func Exist(key string) bool                                   // checks non‑expired presence
+func Remove(key string) bool                                  // delete
+func Clear()                                                  // remove all
 ```
-### Get
+
+Notes:
+- `ttl <= 0` means the key never expires.
+- `Get[T]` requires `T` to match the concrete type stored by `Set`/`Put`.
+- Expiration is enforced on read and by a periodic janitor.
+
+## Examples
+
+Set/Put/Get with primitives:
 
 ```go
-package main
+_ = cago.Set("a", 42, 0)            // no expiry
+_ = cago.Set("b", 3.14, time.Minute) // expires in 1 minute
+cago.Put("a", 99, 0)                 // overwrite regardless of existence
 
-import "github.com/jasakode/cago"
-
-func main() {
-    cago.Get[string]("name")
-    cago.Get[uint]("age")
-    type Person struct {
-        Name string `json:"name"`
-        Age uint `json:"age"`
-    }
-    cago.Get[Person]("person")
+if v, ok := cago.Get[int]("a"); ok {
+    fmt.Println(v) // 99
 }
 ```
 
-### Exist
+Struct values:
 
 ```go
-package main
-
-import "github.com/jasakode/cago"
-
-func main() {
-    cago.Exist[string]("name")
-}
-
+type User struct { Name string; Age int }
+u := User{"Ada", 30}
+_ = cago.Set("user:1", u, 10*time.Second)
+if got, ok := cago.Get[User]("user:1"); ok { fmt.Println(got.Name) }
 ```
 
-### Put
+Expiration:
 
 ```go
-package main
-
-import "github.com/jasakode/cago"
-
-func main() {
-    cago.Put[string]("name", "Cago", 10000) // set or update
-}
-
+_ = cago.Set("tmp", "x", 100*time.Millisecond)
+time.Sleep(150 * time.Millisecond)
+if _, ok := cago.Get[string]("tmp"); !ok { /* expired */ }
 ```
 
-### Remove
+Cleanup and shutdown:
 
 ```go
-package main
-
-import "github.com/jasakode/cago"
-
-func main() {
-    cago.Remove[string]("name")
-}
-
+_ = cago.New(cago.Config{CleanInterval: 500 * time.Millisecond})
+defer cago.Close()
 ```
 
-### Clear
+## Concurrency
 
-```go
-package main
+All operations are safe for concurrent access. The janitor runs in a single goroutine.
 
-import "github.com/jasakode/cago"
+## License
 
-func main() {
-    cago.Clear() // clear all cahce
-}
-
-```
+BSD-3-Clause

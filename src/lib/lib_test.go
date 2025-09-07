@@ -6,9 +6,9 @@
 package lib_test
 
 import (
-	"testing"
+    "testing"
 
-	"github.com/jasakode/cago/lib"
+    "github.com/jasakode/cago/src/lib"
 )
 
 // equal membandingkan dua slice byte untuk kesetaraan.
@@ -122,7 +122,7 @@ func TestUint64ToByte(t *testing.T) {
 		{1, []byte{0, 0, 0, 0, 0, 0, 0, 1}},                                    // Nilai normal
 		{255, []byte{0, 0, 0, 0, 0, 0, 0, 255}},                                // Nilai maksimum untuk byte ketujuh
 		{256, []byte{0, 0, 0, 0, 0, 0, 1, 0}},                                  // Nilai dengan byte keenam
-		{65535, []byte{0, 0, 0, 0, 0, 255, 255, 0}},                            // Nilai maksimum untuk byte keenam dan ketujuh
+        {65535, []byte{0, 0, 0, 0, 0, 0, 255, 255}},                            // Nilai maksimum untuk byte keenam dan ketujuh
 		{4294967295, []byte{0, 0, 0, 0, 255, 255, 255, 255}},                   // Nilai maksimum untuk uint32
 		{18446744073709551615, []byte{255, 255, 255, 255, 255, 255, 255, 255}}, // Nilai maksimum untuk uint64
 		{9223372036854775808, []byte{128, 0, 0, 0, 0, 0, 0, 0}},                // Nilai tengah
@@ -144,16 +144,16 @@ func TestUint64ToByte(t *testing.T) {
 	3. Comparing Results: Fungsi equal digunakan untuk membandingkan dua slice byte, memastikan hasilnya sesuai dengan yang diharapkan.
 */
 func TestInt8ToByte(t *testing.T) {
-	tests := []struct {
-		input  int8
-		output []byte
-	}{
-		{-128, []byte{255}}, // Nilai minimum untuk int8
-		{-1, []byte{255}},   // Nilai negatif
-		{0, []byte{0}},      // Nilai nol
-		{1, []byte{1}},      // Nilai positif kecil
-		{127, []byte{127}},  // Nilai maksimum untuk int8
-	}
+    tests := []struct {
+        input  int8
+        output []byte
+    }{
+        {-128, []byte{128}}, // Nilai minimum untuk int8 (two's complement)
+        {-1, []byte{255}},   // Nilai negatif
+        {0, []byte{0}},      // Nilai nol
+        {1, []byte{1}},      // Nilai positif kecil
+        {127, []byte{127}},  // Nilai maksimum untuk int8
+    }
 
 	for _, test := range tests {
 		result := lib.Int8ToByte(test.input)
@@ -279,17 +279,17 @@ func TestStringToByte(t *testing.T) {
 	3. Comparing Results: Fungsi equal digunakan untuk membandingkan dua slice byte, memastikan hasilnya sesuai dengan yang diharapkan.
 */
 func TestStringToByteASCII(t *testing.T) {
-	tests := []struct {
-		input  string
-		output []byte
-	}{
-		{"", []byte{}}, // Kasus string kosong
-		{"hello", []byte{'h', 'e', 'l', 'l', 'o'}},                                                             // String dengan karakter ASCII
-		{"12345", []byte{'1', '2', '3', '4', '5'}},                                                             // String dengan angka
-		{"hello, 世界", []byte{'h', 'e', 'l', 'l', 'o', ',', 0}},                                                 // Kombinasi ASCII dan non-ASCII
-		{"ASCII: !@#$%^&*", []byte{'A', 'S', 'C', 'I', 'I', ':', ' ', '!', '@', '#', '$', '%', '^', '&', '*'}}, // String dengan karakter spesial
-		{"Café", []byte{'C', 'a', 'f', 'e', 0}},                                                                // Contoh dengan karakter non-ASCII 'é'
-	}
+    tests := []struct {
+        input  string
+        output []byte
+    }{
+        {"", []byte{}}, // empty string
+        {"hello", []byte{'h', 'e', 'l', 'l', 'o'}},                                                             // ASCII only
+        {"12345", []byte{'1', '2', '3', '4', '5'}},                                                             // digits
+        {"hello, 世界", []byte{'h', 'e', 'l', 'l', 'o', ',', ' ', 0, 0, 0, 0, 0, 0}},                             // ASCII + non-ASCII (zeros for UTF-8 bytes)
+        {"ASCII: !@#$%^&*", []byte{'A', 'S', 'C', 'I', 'I', ':', ' ', '!', '@', '#', '$', '%', '^', '&', '*'}}, // ASCII specials
+        {"Café", []byte{'C', 'a', 'f', 0, 0}},                                                                  // Non-ASCII 'é' replaced by zeros (2 bytes)
+    }
 
 	for _, test := range tests {
 		result := lib.StringToByteASCII(test.input)

@@ -6,81 +6,69 @@
 package cago_test
 
 import (
-	"bytes"
-	"fmt"
-	"sync"
 	"testing"
 	"time"
 
 	"github.com/jasakode/cago"
 )
 
-func BenchmarkCompareString(b *testing.B) {
-	str1 := "hello world"
-	str2 := "hello world"
-	for i := 0; i < b.N; i++ {
-		if str1 == str2 {
-			continue
-		}
+func setup()   { _ = cago.New(cago.Config{CleanInterval: 20 * time.Millisecond}) }
+func destroy() { cago.Close() }
+
+func TestSetGetAndExpire(t *testing.T) {
+	setup()
+	defer destroy()
+
+	if err := cago.Set("greeting", "hello", 80*time.Millisecond); err != nil {
+		t.Fatalf("unexpected error on Set: %v", err)
+	}
+
+	if v, ok := cago.Get[string]("greeting"); !ok || v != "hello" {
+		t.Fatalf("Get expected 'hello', got %q ok=%v", v, ok)
+	}
+
+	time.Sleep(120 * time.Millisecond)
+	if _, ok := cago.Get[string]("greeting"); ok {
+		t.Fatalf("expected key to be expired")
+	}
+	if cago.Exist("greeting") {
+		t.Fatalf("Exist should be false after expiration")
 	}
 }
 
-func BenchmarkCompareByte(b *testing.B) {
-	byte1 := []byte("hello world")
-	byte2 := []byte("hello world")
-	for i := 0; i < b.N; i++ {
-		if bytes.Equal(byte1, byte2) {
-			continue
-		}
+func TestSetConflictAndPut(t *testing.T) {
+	setup()
+	defer destroy()
+
+	if err := cago.Set("k", 123, 0); err != nil {
+		t.Fatalf("unexpected error on first Set: %v", err)
+	}
+	if err := cago.Set("k", 456, 0); err == nil {
+		t.Fatalf("expected ErrKeyExists on second Set")
+	}
+
+	cago.Put("k", 456, 0)
+	if v, ok := cago.Get[int]("k"); !ok || v != 456 {
+		t.Fatalf("Put did not overwrite value: got %v ok=%v", v, ok)
 	}
 }
 
-type Person struct {
-	Name string `json:"name"`
-	Age  int64  `json:"age"`
-}
+func TestRemoveAndClear(t *testing.T) {
+	setup()
+	defer destroy()
 
-func TestApp(t *testing.T) {
-	var wg sync.WaitGroup
+	cago.Put("a", "x", 0)
+	cago.Put("b", "y", 0)
 
-	// Hapus file database sebelum test dimulai
-
-	t.Cleanup(func() {
-		// os.Remove("db.db")
-	})
-
-	// Inisialisasi cago dengan database baru
-	cago.New(cago.Config{
-		Path: "db.db",
-	})
-
-	// Tambahkan WaitGroup untuk menunggu proses selesai
-	wg.Add(1)
-
-	// Luncurkan goroutine untuk menunggu 3 detik
-	go func() {
-		defer wg.Done()
-		time.Sleep(3 * time.Second)
-	}()
-
-	// Tunggu sampai goroutine selesai
-	wg.Wait()
-
-	// Test untuk key "jhon"
-	rs := cago.Get[string]("jhon")
-	if rs != nil {
-		fmt.Println(*rs)
-	} else {
-		fmt.Println("Data Not Found !!!")
+	if ok := cago.Remove("a"); !ok {
+		t.Fatalf("expected Remove to return true")
+	}
+	if _, ok := cago.Get[string]("a"); ok {
+		t.Fatalf("expected 'a' to be removed")
 	}
 
-	// cago.Set("hello", "HALLO KAMU", 5000)
-	// cago.Set("jhon", "HALLO KAMU Jhon", 60000 * 60)
-	// time.Sleep(1 * time.Second)
-	// fmt.Println(cago.Size())
-	// fmt.Println(*cago.Get[string]("hello"))
-	// fmt.Println(*cago.Get[string]("jhon"))
-	// time.Sleep(23 * time.Second)
-	// fmt.Println(cago.Size())
-	// fmt.Println(cago.Get[string]("hello"), cago.Get[string]("jhon"))
+	cago.Clear()
+	if cago.Exist("b") {
+		t.Fatalf("expected 'b' not to exist after Clear")
+	}
 }

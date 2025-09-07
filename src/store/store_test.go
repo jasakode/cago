@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jasakode/cago/lib"
-	"github.com/jasakode/cago/store"
+	"github.com/jasakode/cago/src/lib"
+	"github.com/jasakode/cago/src/store"
 )
 
 const (
